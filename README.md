@@ -29,7 +29,7 @@ Step 5: Run file on terminal and parse locations of input and output images
 python img_color.py -i INPUT_LOCATION -o OUTPUT_LOCATION
 ```
 
-##References
+## References
 
 - [Project Report (Berkeley)] (https://sauravmittal.github.io/computational-photography/colorizing-photos/)
 - [Image Pyramid and Alignment] (https://github.com/jmecom/image-pyramid)
