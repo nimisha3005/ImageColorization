@@ -2,7 +2,7 @@
 
 The goal of this project is to colorize images taken by Prokudin-Gorskii a 100 years ago. The images are provided in the form of digitized glass plates that requires application of image processing techniques to produce a colored image.
 
-This project is taken from [Dr. Alexei Efros’](https://inst.eecs.berkeley.edu/~cs194-26/fa20/hw/proj1/) class at the University of California, Berkeley.
+This project is taken from [Dr. Alexei Efros’](https://inst.eecs.berkeley.edu/~cs194-26/fa20/hw/proj1/) class at the University of California, Berkeley. The output of the code on different images can be viewed in Final_Images folder.
 
 ## Data
 
@@ -28,3 +28,8 @@ Step 5: Run file on terminal and parse locations of input and output images
 ```
 python img_color.py -i INPUT_LOCATION -o OUTPUT_LOCATION
 ```
+
+##References
+
+- [Project Report (Berkeley)] (https://sauravmittal.github.io/computational-photography/colorizing-photos/)
+- [Image Pyramid and Alignment] (https://github.com/jmecom/image-pyramid)
