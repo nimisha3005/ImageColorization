@@ -8,6 +8,7 @@ import os
 from matplotlib import pyplot as plt
 from PIL import Image
 from math import *
+import argparse
 
 
 def load_images_from_folder(folder):
@@ -23,11 +24,45 @@ def load_images_from_folder(folder):
     return images
 
 
-def pre_processing(im):
+def pre_processing(im, threshold=0.02):
     """
     Preprocesses the rgb plates of an image to grayscale images
     """
-    print(im.shape)
+    skio.imshow(im)
+    plt.title("base")
+    plt.show()
+    
+    h,w,_ = im.shape
+    im = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+    im1 = im.copy()
+    
+    # Crop grayscale image to binary form
+    im1[im1<102] = 0
+    im1[im1>102] = 255
+    
+    
+    # Crop left border
+    invert = cv2.bitwise_not(im1)
+    cut = w
+    for i in range(230):
+        white_density = sum(invert[:, i])/h
+        if white_density >= threshold:
+            cut = i
+    
+    im = im[:, cut:w]
+    
+    
+    # Crop right border
+    [h, w] = im.shape
+    cut = w
+    for i in range(w,(w-230),-1):
+        white_density = sum(invert[:, i])/h;
+        if white_density >= threshold:
+            cut = i
+            
+    im = im[:, 1:cut]
+    
+    
     height = np.floor(im.shape[0] / 3.0).astype(np.int)
     
     # separate color channels
@@ -35,6 +70,45 @@ def pre_processing(im):
     g = im[height: 2*height]
     r = im[2*height: 3*height]
     
+    
+    # Crop top border
+    [h, w] = b.shape
+    cut = h
+    for i in range(230):
+        white_density = sum(b[i, :])/w
+        if white_density >= threshold:
+            cut = i
+    
+    b = b[cut:h, :]
+    g = g[cut:h, :]
+    r = r[cut:h, :]
+    
+    
+    # Crop bottom border
+    [h, w] = r.shape
+    cut = h
+    for i in range(h-1,(h-230),-1):
+        white_density = sum(r[i, :])/w
+        if white_density >= threshold:
+            cut = i
+    
+    b = b[1:cut, :]
+    g = g[1:cut, :]
+    r = r[1:cut, :]
+    
+    skio.imshow(b)
+    plt.title("b")
+    plt.show()
+    
+    skio.imshow(g)
+    plt.title("g")
+    plt.show()
+    
+    skio.imshow(r)
+    plt.title("r")
+    plt.show()
+    
+        
     """
     b = b[int(0.1*b.shape[1]):-int(0.1*b.shape[1]),int(0.1*b.shape[0]):-int(0.1*b.shape[0])]
     g = g[int(0.1*g.shape[1]):-int(0.1*g.shape[1]),int(0.1*g.shape[0]):-int(0.1*g.shape[0])]
@@ -52,9 +126,9 @@ def pre_processing(im):
     im3_gray = cv2.Laplacian(np.uint8(im3_gray),cv2.CV_8U)
     """
     
-    im1_gray = cv2.cvtColor(b,cv2.COLOR_BGR2GRAY)
-    im2_gray = cv2.cvtColor(g,cv2.COLOR_BGR2GRAY)
-    im3_gray = cv2.cvtColor(r,cv2.COLOR_BGR2GRAY)
+    im1_gray = b#cv2.cvtColor(b,cv2.COLOR_BGR2GRAY)
+    im2_gray = g#cv2.cvtColor(g,cv2.COLOR_BGR2GRAY)
+    im3_gray = r#cv2.cvtColor(r,cv2.COLOR_BGR2GRAY)
     
     return im1_gray,im2_gray,im3_gray
 
@@ -361,35 +435,6 @@ def scale_img(img,factor):
     res = cv2.resize(blur, (int(blur.shape[1]*(1/factor)),int(blur.shape[0]*(1/factor))), interpolation = cv2.INTER_AREA)
     return res
              
-def edge_shift(im1,im2,s):
-    best = float('inf')
-    A_edges = cv2.Canny(np.uint8(im1),100,200)
-    for dy in range(-s,s):
-        for dx in range(-s,s):
-            shifted = circshift(im2, dx, dy)        
-            shifted_edges = cv2.Canny(np.uint8(shifted),100,200)
-            score = sum(sum((A_edges-shifted_edges)**2))
-            if score <= best:
-                best = score;
-                shift = [dx, dy]
-    return shift
-
-def pyramid_shift(im1,im2,s):
-    if s==0:
-        shift = edge_shift(im1, im2, 15)
-        print(shift)
-    else:
-        im1_scale = scale_img(im1,2)
-        im2_scale = scale_img(im2,2)
-        #print(s,type(im1_scale), type(im2_scale),type(pyramid_shift(im1_scale,im2_scale,s-1)))
-        shift = pyramid_shift(im1_scale,im2_scale,s-1)*2
-        print(shift)
-        im2 = circshift(im2, shift[0], shift[1])
-
-        shift = shift + edge_shift(im1, im2, 2)
-        print(shift)
-    return shift
-        
         
 def read_images(images,names):
     """
@@ -402,50 +447,46 @@ def read_images(images,names):
         name = names[count-1]
         blue,green,red = pre_processing(im)
         
-        g_shift = findshift((green), (blue), 2);
-        r_shift = findshift((green), (red), 2);
-        print("shift",g_shift,r_shift)
+        b_shift = findshift((green), (blue), 2)
+        r_shift = findshift((green), (red), 2)
+        print("shift",b_shift,r_shift)
 
-        im_g = circshift(blue, g_shift[0], g_shift[1]);
-        im_r = circshift(red, r_shift[0],r_shift[1]);
-
-        im_g = np.uint8(im_g);
+        im_b = circshift(blue, b_shift[0], b_shift[1])
+        im_r = circshift(red, r_shift[0],r_shift[1])
+        
+        im_b = np.uint8(im_b);
         im_r = np.uint8(im_r);
 
+        skio.imshow(red)
+        plt.title("base")
+        plt.show()
+        
+        skio.imshow(blue)
+        plt.title("base")
+        plt.show()
+        
         skio.imshow(im_r)
         plt.title("base")
         plt.show()
         
-        skio.imshow(im_g)
+        skio.imshow(im_b)
         plt.title("base")
         plt.show()
         
 
-        im = np.dstack([im_r, green, im_g])
+        im = np.dstack([im_r, green, im_b])
         
-        
+        cv2.imwrite(os.path.join(save_path , name, r'aligned.jpg'),cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
         skio.imshow(im)
         plt.title("base")
         plt.show()
         
+        
+        
         blue_img = blue_base(blue,green,red)
         green_img = green_base(blue,green,red)
         red_img = red_base(blue,green,red)
-        
-        
-        
-        bl=[blue]
-        gr=[green]
-        re =[red]
-        
-        for i in range(8):
-            b=cv2.pyrDown(bl[i])
-            bl.append(b)
-            g=cv2.pyrDown(gr[i])
-            gr.append(g)
-            r=cv2.pyrDown(re[i])
-            re.append(r)
-        
+    
         
         skio.imshow(blue_img)
         plt.title("Blue base")
@@ -486,16 +527,25 @@ def read_images(images,names):
         
         count=count+1
 
-S_PATH = "path where need to save generated images"
-I_PATH = "path where input images present"
-save_path = S_PATH
-input_path = I_PATH
 
-#Read images and create their list
-imgs = load_images_from_folder(input_path)
-
-#Folder to save final results
-folder_names=['one2','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
-
-read_images(imgs,folder_names)
-
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("-i", "--Input", help = "Path to input images")
+    parser.add_argument("-o", "--Output", help = "Path to save results")
+    
+    args = parser.parse_args()
+    
+    S_PATH =  args.Output #path where need to save generated images
+    I_PATH = args.Input #path where input images present
+    save_path = S_PATH
+    input_path = I_PATH
+    
+    #Read images and create their list
+    imgs = load_images_from_folder(input_path)
+    
+    #Folder to save final results
+    folder_names=['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
+    
+    read_images(imgs,folder_names)
+    
